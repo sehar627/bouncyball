@@ -6,34 +6,26 @@ def create_ball(space):
     body = pymunk.Body(1, pymunk.moment_for_circle(1, 0, 20))
     body.position = (400, 50)
     shape = pymunk.Circle(body, 20)
-    shape.elasticity = 1.0
+    shape.elasticity = 0.02
     space.add(body, shape)
+    shape.color = (0, 0, 0, 255)  # Red color (RGBA)
     return body, shape
 
 def create_line(space, angle):
     body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
     body.position = (400, 550)
     
-    length = 200
+    length = 400
     a = (-length//2, 0)
     b = (length//2, 0)
     
     shape = pymunk.Segment(body, a, b, 5)
     shape.elasticity = 1.0
     shape.friction = 0.8
+    shape.color = (150, 75, 0, 255)  # Red color (RGBA)
     shape.body.angle = angle
     space.add(body, shape)
     return body, shape
-
-def create_walls(space):
-    top_wall = pymunk.Segment(space.static_body, (0, 0), (800, 0), 5)
-    top_wall.elasticity = 1.0
-    static_body = space.static_body
-    left_wall = pymunk.Segment(static_body, (0, 0), (0, 600), 5)
-    right_wall = pymunk.Segment(static_body, (800, 0), (800, 600), 5)
-    left_wall.elasticity = 1.0
-    right_wall.elasticity = 1.0
-    space.add(left_wall, right_wall, top_wall)
 
 def game():
     pygame.init()
@@ -43,36 +35,56 @@ def game():
     space.gravity = (0, 981)
     draw_options = pymunk.pygame_util.DrawOptions(screen)
     
+    font = pygame.font.Font(None, 36)
+    score = 0
+    frame_count = 0
+    
+    # Load background image
+    background = pygame.image.load("bg.jpg")
+    background = pygame.transform.scale(background, (800, 600))
+    
     ball_body, ball_shape = create_ball(space)
     line_body, line = create_line(space, angle=0.1)  # Line starts slightly slanted
-    create_walls(space)  # Add walls to bounce back the ball
     
     running = True
+    game_over = False
     while running:
-        bg = pygame.image.load('bg.jpg')
-        screen.blit(bg, (0, 0))
+        screen.blit(background, (0, 0))  # Draw background
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    ball_body.velocity = (ball_body.velocity.x, -700)  # Boost ball upwards
         
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
-            line_body.angle -= 0.05
-        if keys[pygame.K_RIGHT]:
-            line_body.angle += 0.05
+        if not game_over:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_LEFT]:
+                line_body.angle -= 0.02
+            if keys[pygame.K_RIGHT]:
+                line_body.angle += 0.02
+            
+            space.step(1 / 60)
+            space.debug_draw(draw_options)
+            
+            if ball_body.position.y > 600:
+                game_over = True
+            else:
+                frame_count += 1
+                if frame_count % 60 == 0:  # Increase score every second
+                    score += 1
+            
+            score_text = font.render(f"Score: {score}", True, (0,0,0))
+            screen.blit(score_text, (10, 10))
+        else:
+            screen.fill((0, 0, 0))
+            game_over_text = font.render("Game Over!", True, (255, 0, 0))
+            final_score_text = font.render(f"Final Score: {score}", True, (255, 255, 255))
+            screen.blit(game_over_text, (350, 250))
+            screen.blit(final_score_text, (350, 300))
+            pygame.display.flip()
+            pygame.time.delay(3000)
+            running = False
         
-        space.step(1 / 60)
-        space.debug_draw(draw_options)
         pygame.display.flip()
         clock.tick(60)
-        
-        # Game Over Condition
-        if ball_body.position.y > 600:
-            print("Game Over!")
-            running = False
     
     pygame.quit()
 
